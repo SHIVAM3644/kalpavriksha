@@ -10,6 +10,7 @@ struct User {
 void addUser();
 void deleteUser();
 void updateUser();
+void readUser();
 
 int main() {
     int choice;
@@ -19,7 +20,8 @@ int main() {
         printf("1. Add User\n");
         printf("2. Delete User\n");
         printf("3. Update User\n");
-        printf("4. Exit\n");
+         printf("4. Read Record\n");
+        printf("5. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
         getchar();
@@ -28,10 +30,11 @@ int main() {
             case 1: addUser(); break;
             case 2: deleteUser(); break;
             case 3: updateUser(); break;
-            case 4: printf("Exiting...\n"); break;
+            case 4: readUser(); break;
+            case 5: printf("Exiting...\n"); break;
             default: printf("Invalid choice!\n");
         }
-    } while (choice != 4);
+    } while (choice != 5);
 
     return 0;
 }
@@ -170,4 +173,16 @@ void updateUser() {
     rename("temp.txt", "users.txt");
 
     printf("Record with ID %d updated successfully.\n", updateId);
+}
+
+void readUser(){
+    FILE *fp;
+    char ch;
+fp = fopen("users.txt", "r");
+    if (fp==NULL) { printf("File not found!\n"); return; }
+
+    while((ch=fgetc(fp))!=EOF){
+        printf("%c",ch);
+    }
+    fclose(fp);
 }
