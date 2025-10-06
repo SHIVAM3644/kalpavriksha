@@ -1,261 +1,257 @@
 #include <stdio.h>
 #include <string.h>
 
-struct User
+
+struct UserRecord
 {
-    int id;
-    char name[50];
-    int age;
+    int userId;
+    char userName[50];
+    int userAge;
 };
 
-void addUser();
-void deleteUser();
-void updateUser();
-void readUser();
+
+void addUserRecord();
+void deleteUserRecord();
+void updateUserRecord();
+void displayAllRecords();
 
 int main()
 {
-    int choice;
+    int menuChoice;
 
     do
     {
-        printf("\n--- User Record ---\n");
-        printf("1. Add User\n");
-        printf("2. Delete User\n");
-        printf("3. Update User\n");
-        printf("4. Read Record\n");
+        printf("\n--- User Record Management System ---\n");
+        printf("1. Add New User\n");
+        printf("2. Delete Existing User\n");
+        printf("3. Update User Details\n");
+        printf("4. Display All Users\n");
         printf("5. Exit\n");
         printf("Enter your choice: ");
-        scanf("%d", &choice);
-        getchar();
+        scanf("%d", &menuChoice);
+        getchar(); // consume newline
 
-        switch (choice)
+        switch (menuChoice)
         {
             case 1:
             {
-                addUser();
+                addUserRecord();
                 break;
             }
             case 2:
             {
-                deleteUser();
+                deleteUserRecord();
                 break;
             }
             case 3:
             {
-                updateUser();
+                updateUserRecord();
                 break;
             }
             case 4:
             {
-                readUser();
+                displayAllRecords();
                 break;
             }
             case 5:
             {
-                printf("Exiting...\n");
+                printf("Exiting program...\n");
                 break;
             }
             default:
             {
-                printf("Invalid Choice! Please enter a correct choice.\n");
+                printf("Invalid choice! Please select a valid option.\n");
                 break;
             }
         }
 
-    } while (choice != 5);
+    } while (menuChoice != 5);
 
     return 0;
 }
 
-void addUser()
-{
 
-    struct User s;
-    FILE *fp;
-    int existingId, found = 0;
-    char line[200];
+void addUserRecord()
+{
+    struct UserRecord newUser;
+    FILE *filePointer;
+    int existingUserId, isDuplicate = 0;
+    char fileLine[200];
 
     printf("Enter User ID: ");
-    scanf("%d", &s.id);
+    scanf("%d", &newUser.userId);
     getchar();
 
-    printf("Enter Name: ");
-    fgets(s.name, sizeof(s.name), stdin);
+    printf("Enter User Name: ");
+    fgets(newUser.userName, sizeof(newUser.userName), stdin);
 
-    printf("Enter Age: ");
-    scanf("%d", &s.age);
+    printf("Enter User Age: ");
+    scanf("%d", &newUser.userAge);
     getchar();
 
-    fp = fopen("users.txt", "r");
+    
+    filePointer = fopen("users.txt", "r");
 
-    if (fp != NULL)
+    if (filePointer != NULL)
     {
-
-        while (fgets(line, sizeof(line), fp))
+        while (fgets(fileLine, sizeof(fileLine), filePointer))
         {
-            if (sscanf(line, "ID: %d", &existingId) == 1)
+            if (sscanf(fileLine, "ID: %d", &existingUserId) == 1)
             {
-                if (existingId == s.id)
+                if (existingUserId == newUser.userId)
                 {
-                    found = 1;
+                    isDuplicate = 1;
                     break;
                 }
             }
         }
-        fclose(fp);
+        fclose(filePointer);
     }
 
-    if (found)
+    if (isDuplicate)
     {
-      printf("Record with ID %d already exists\n", s.id);
-      return;
-    }
-
-    fp = fopen("users.txt", "a");
-
-    if (fp == NULL) 
-    {
-        printf("Error opening file!\n");
+        printf("Record with ID %d already exists.\n", newUser.userId);
         return;
     }
 
-    fprintf(fp, "ID: %d\nName: %sAge: %d\n\n", s.id, s.name, s.age);
+    filePointer = fopen("users.txt", "a");
 
-    fclose(fp);
+    if (filePointer == NULL)
+    {
+        printf("Error opening file for writing!\n");
+        return;
+    }
 
-    printf("New User record added successfully.\n");
+    fprintf(filePointer, "ID: %d\nName: %sAge: %d\n\n", newUser.userId, newUser.userName, newUser.userAge);
+    fclose(filePointer);
+
+    printf("User record added successfully.\n");
 }
 
-void deleteUser()
+
+void deleteUserRecord()
 {
-    int deleteId, id;
-    char line[200];
-    int skip = 0;
-    FILE *fp, *temp;
+    int targetUserId, currentUserId;
+    char fileLine[200];
+    int linesToSkip = 0;
+    FILE *filePointer, *tempFile;
 
     printf("Enter User ID to delete: ");
-    scanf("%d", &deleteId);
+    scanf("%d", &targetUserId);
 
-    fp = fopen("users.txt", "r");
+    filePointer = fopen("users.txt", "r");
 
-    if (!fp)
+    if (!filePointer)
     {
         printf("File not found!\n");
-        return; 
-    }
-
-    temp = fopen("temp.txt", "w");
-
-    if (!temp) 
-    {
-        printf("Error creating temporary file!\n");
-        fclose(fp);
         return;
     }
 
-    while (fgets(line, sizeof(line), fp)) 
-    {
-        if (sscanf(line, "ID: %d", &id) == 1) 
-        {
+    tempFile = fopen("temp.txt", "w");
 
-            if (id == deleteId)
+    if (!tempFile)
+    {
+        printf("Error creating temporary file!\n");
+        fclose(filePointer);
+        return;
+    }
+
+    while (fgets(fileLine, sizeof(fileLine), filePointer))
+    {
+        if (sscanf(fileLine, "ID: %d", &currentUserId) == 1)
+        {
+            if (currentUserId == targetUserId)
             {
-                skip = 3;
+                linesToSkip = 3;
                 continue;
             }
         }
 
-        if (skip > 0)
-        {  
-            skip--;
+        if (linesToSkip > 0)
+        {
+            linesToSkip--;
             continue;
         }
 
-        fputs(line, temp);
+        fputs(fileLine, tempFile);
     }
 
-    fclose(fp);
-    fclose(temp);
+    fclose(filePointer);
+    fclose(tempFile);
 
     remove("users.txt");
     rename("temp.txt", "users.txt");
 
-    printf("Record with ID %d deleted.\n", deleteId);
+    printf("Record with ID %d deleted successfully.\n", targetUserId);
 }
 
-void updateUser() {
 
-    int updateId, id, skip = 0;
-
-    char line[200], name[50];
-
-    int age;
-
-    FILE *fp, *temp;
+void updateUserRecord()
+{
+    int targetUserId, currentUserId, linesToSkip = 0;
+    char fileLine[200], updatedName[50];
+    int updatedAge;
+    FILE *filePointer, *tempFile;
+    int recordFound = 0;
 
     printf("Enter User ID to update: ");
-    scanf("%d", &updateId);
+    scanf("%d", &targetUserId);
     getchar();
 
-    fp = fopen("users.txt", "r");
+    filePointer = fopen("users.txt", "r");
 
-    if (!fp)
+    if (!filePointer)
     {
         printf("File not found!\n");
         return;
     }
 
-    temp = fopen("temp.txt", "w");
+    tempFile = fopen("temp.txt", "w");
 
-    if (!temp)
+    if (!tempFile)
     {
-        printf("Error creating temporary file! \n");
-        fclose(fp);
+        printf("Error creating temporary file!\n");
+        fclose(filePointer);
         return;
-        
     }
 
-    int found = 0;
-
-    while (fgets(line, sizeof(line), fp)) 
+    while (fgets(fileLine, sizeof(fileLine), filePointer))
     {
-        if (sscanf(line, "ID: %d", &id) == 1)
+        if (sscanf(fileLine, "ID: %d", &currentUserId) == 1)
         {
-            if (id == updateId)
+            if (currentUserId == targetUserId)
             {
-                found = 1;
-                skip = 0;
+                recordFound = 1;
 
-                printf("Enter new Name: ");
-                fgets(name, sizeof(name), stdin);
+                printf("Enter new User Name: ");
+                fgets(updatedName, sizeof(updatedName), stdin);
 
-                printf("Enter new Age: ");
-                scanf("%d", &age);
+                printf("Enter new User Age: ");
+                scanf("%d", &updatedAge);
                 getchar();
 
-                fprintf(temp, "ID: %d\nName: %sAge: %d\n\n", id, name, age);
+                fprintf(tempFile, "ID: %d\nName: %sAge: %d\n\n", currentUserId, updatedName, updatedAge);
 
-                skip = 2;
+                linesToSkip = 2;
                 continue;
             }
         }
 
-        if (skip > 0) 
+        if (linesToSkip > 0)
         {
-            skip--;
+            linesToSkip--;
             continue;
         }
 
-        fputs(line, temp);
+        fputs(fileLine, tempFile);
     }
 
-    fclose(fp);
-    fclose(temp);
+    fclose(filePointer);
+    fclose(tempFile);
 
-    if (!found)
+    if (!recordFound)
     {
-        printf("Record with ID %d not found.\n", updateId);
+        printf("No record found with ID %d.\n", targetUserId);
         remove("temp.txt");
         return;
     }
@@ -263,30 +259,29 @@ void updateUser() {
     remove("users.txt");
     rename("temp.txt", "users.txt");
 
-    printf("Record with ID %d updated successfully.\n", updateId);
+    printf("Record with ID %d updated successfully.\n", targetUserId);
 }
 
 
-void readUser(){
-   
-FILE *fp;
-char ch;
+void displayAllRecords()
+{
+    FILE *filePointer;
+    char character;
 
-fp = fopen("users.txt", "r");
+    filePointer = fopen("users.txt", "r");
 
-    if (fp==NULL) 
+    if (filePointer == NULL)
     {
         printf("File not found!\n");
         return;
-
     }
 
-    while((ch=fgetc(fp))!=EOF)
+    printf("\n--- All User Records ---\n");
+
+    while ((character = fgetc(filePointer)) != EOF)
     {
-
-        printf("%c",ch);
-
+        printf("%c", character);
     }
 
-    fclose(fp);
+    fclose(filePointer);
 }
