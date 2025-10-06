@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <string.h>
+#define MAX_NAME_LENGTH 50
+#define MAX_LINE_LENGTH 200
 
 
 struct UserRecord
 {
     int userId;
-    char userName[50];
+    char userName[MAX_NAME_LENGTH];
     int userAge;
 };
 
@@ -76,7 +78,7 @@ void addUserRecord()
     struct UserRecord newUser;
     FILE *filePointer;
     int existingUserId, isDuplicate = 0;
-    char fileLine[200];
+    char fileLine[MAX_LINE_LENGTH];
 
     printf("Enter User ID: ");
     scanf("%d", &newUser.userId);
@@ -132,7 +134,7 @@ void addUserRecord()
 void deleteUserRecord()
 {
     int targetUserId, currentUserId;
-    char fileLine[200];
+    char fileLine[MAX_LINE_LENGTH];
     int linesToSkip = 0;
     FILE *filePointer, *tempFile;
 
@@ -189,7 +191,7 @@ void deleteUserRecord()
 void updateUserRecord()
 {
     int targetUserId, currentUserId, linesToSkip = 0;
-    char fileLine[200], updatedName[50];
+    char fileLine[MAX_LINE_LENGTH], updatedName[MAX_NAME_LENGTH];
     int updatedAge;
     FILE *filePointer, *tempFile;
     int recordFound = 0;
