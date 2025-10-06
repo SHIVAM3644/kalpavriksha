@@ -12,7 +12,6 @@ int main()
 {
     char expression[100];
 
-    printf("Enter a Mathematical expression (e.g:2+3*5-4+2): ");
     fgets(expression, sizeof(expression), stdin);
 
     if (!isValidExpression(expression))
@@ -89,20 +88,26 @@ void calculate(const char s[])
         {
             result += stack[i];
         }
-        printf("Result: %d\n", result);
+        printf("Result of Expression : %d\n", result);
     }
 }
 
 
 bool isValidExpression(const char s[])
+
 {
     for (int i = 0; s[i] != '\0'; i++)
+
     {
 
         if (s[i] == '\n')
-            continue;
+           {
+             continue;
+           }
         if (s[i] == ' ')
-            continue;
+           {
+             continue;
+           }
         if (!isdigit(s[i]) && s[i] != '+' && s[i] != '-' && s[i] != '*' && s[i] != '/' && s[i] != ' ')
         {
             return false;
