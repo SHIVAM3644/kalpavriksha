@@ -41,12 +41,12 @@ void calculate(const char s[])
         {
             continue;
         }
-        if (isdigit(currentChar))
+        if (isdigit((unsigned char)currentChar))
         {
             currentNumber = currentNumber * 10 + (currentChar - '0');
         }
 
-        if (!isdigit(currentChar) || i == len - 1)
+        if (!isdigit((unsigned char)currentChar) || i == len - 1)
         {
             if (operation == '+')
             {
@@ -108,7 +108,7 @@ bool isValidExpression(const char s[])
            {
              continue;
            }
-        if (!isdigit(s[i]) && s[i] != '+' && s[i] != '-' && s[i] != '*' && s[i] != '/' && s[i] != ' ')
+        if (!isdigit((unsigned char)s[i]) && s[i] != '+' && s[i] != '-' && s[i] != '*' && s[i] != '/' && s[i] != ' ')
         {
             return false;
         }
