@@ -12,7 +12,7 @@ int main()
 {
     char expression[100];
 
-    printf("Enter expression: ");
+    printf("Enter a Mathematical expression (e.g:2+3*5-4+2): ");
     fgets(expression, sizeof(expression), stdin);
 
     if (!isValidExpression(expression))
@@ -70,10 +70,14 @@ void calculate(const char s[])
                 }
                 stack[top] = stack[top] / currentNumber;
             }
+
             operation = currentChar;
             currentNumber = 0;
+
         }
     }
+
+
     if (isDivisibleByZero)
     {
         printf("Error: Division by zero.");
@@ -88,6 +92,7 @@ void calculate(const char s[])
         printf("Result: %d\n", result);
     }
 }
+
 
 bool isValidExpression(const char s[])
 {
