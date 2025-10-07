@@ -96,10 +96,12 @@ void calculate(const char s[])
 bool isValidExpression(const char s[])
 
 {
+    char previousCharacter = '\0';
+
     for (int i = 0; s[i] != '\0'; i++)
 
-    {
-
+    {  
+        
         if (s[i] == '\n')
            {
              continue;
@@ -112,6 +114,14 @@ bool isValidExpression(const char s[])
         {
             return false;
         }
+        if ( s[i] == '*' || s[i] == '/')
+        {
+            if(previousCharacter == s[i])
+            {
+            	return false;
+			}
+        } 
+		previousCharacter = s[i];   
     }
     return true;
 }
