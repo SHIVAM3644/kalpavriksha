@@ -8,8 +8,8 @@ int calculateTotalMarks(int marks1,int marks2,int marks3);
 float calculateAverageMarks(int marks1,int marks2,int marks3);
 char calculateGrade(float averageMarks);
 char* gradeToStars(char grade);
+void printListOfRollNo(struct Student s[], int index, int totalStudents);
 
-	
 struct Student
 { 
     short int rollNo;
@@ -31,10 +31,10 @@ int main()
     for (int i = 0; i < totalNumberOfStudents; i++)
     {
         char line[max_input_scan];
-
+        
         fgets(line, sizeof(line), stdin);
-
         line[strcspn(line, "\n")] = '\0';
+
 
         sscanf(line, "%hd %[^\n0123456789] %d %d %d",
             &s[i].rollNo,
@@ -48,13 +48,9 @@ int main()
 	{
 		showStudentPerformance(s[i].rollNo,s[i].nameOfStudent,s[i].marksOfThreeSubject);
 	}
-
-	printf("List of Roll Numbers: "); 
-
-    for(int i = 0; i < totalNumberOfStudents; i++)
-	{
-		printf("%d  ",s[i].rollNo);
-	}
+    printf("List of Roll Numbers: ");
+    printListOfRollNo(s, 0, totalNumberOfStudents);
+    printf("\n");
 
      return 0;
     
@@ -71,10 +67,12 @@ void showStudentPerformance(short int StudentRoll,char nameOfStudent[],int marks
 	printf("Total: %d\n",totalMarks);
 	printf("Average: %f\n",averageMarks);
 	printf("Grade: %c\n",calculateGrade(averageMarks));
-	
 	if(calculateGrade(averageMarks)!='F')
 	{
 		printf("Performance: %s\n\n",gradeToStars(calculateGrade(averageMarks)));
+	}else
+	{
+		printf("\n");
 	}
 	
 		
@@ -119,4 +117,15 @@ char* gradeToStars(char grade)
        case 'D': return "**";
        default:  return "";
    }
+}
+
+void printListOfRollNo(struct Student s[], int index, int totalStudents) 
+{
+    if(index >= totalStudents)
+	{
+	     return;	
+	}
+    printf("%d ", s[index].rollNo);
+    
+    printListOfRollNo(s, index + 1, totalStudents);
 }
