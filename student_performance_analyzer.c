@@ -31,10 +31,10 @@ int main()
     for (int i = 0; i < totalNumberOfStudents; i++)
     {
         char line[max_input_scan];
-        
-        fgets(line, sizeof(line), stdin);
-        line[strcspn(line, "\n")] = '\0';
 
+        fgets(line, sizeof(line), stdin);
+
+        line[strcspn(line, "\n")] = '\0';
 
         sscanf(line, "%hd %[^\n0123456789] %d %d %d",
             &s[i].rollNo,
@@ -47,6 +47,13 @@ int main()
     for(int i = 0; i < totalNumberOfStudents; i++)
 	{
 		showStudentPerformance(s[i].rollNo,s[i].nameOfStudent,s[i].marksOfThreeSubject);
+	}
+
+	printf("List of Roll Numbers: "); 
+
+    for(int i = 0; i < totalNumberOfStudents; i++)
+	{
+		printf("%d  ",s[i].rollNo);
 	}
 
      return 0;
@@ -64,6 +71,7 @@ void showStudentPerformance(short int StudentRoll,char nameOfStudent[],int marks
 	printf("Total: %d\n",totalMarks);
 	printf("Average: %f\n",averageMarks);
 	printf("Grade: %c\n",calculateGrade(averageMarks));
+	
 	if(calculateGrade(averageMarks)!='F')
 	{
 		printf("Performance: %s\n\n",gradeToStars(calculateGrade(averageMarks)));
