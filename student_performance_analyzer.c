@@ -3,13 +3,6 @@
 #define max_name_length 50
 #define max_input_scan 250
 	
-void showStudentPerformance(struct Student studentInstance[],int totalNumberOfStudents);
-int calculateTotalMarks(int marksOfSTudent[]);
-float calculateAverageMarks(int marksOfSTudent[]);
-char calculateGrade(float averageMarks);
-char* gradeToStars(char grade);
-void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents);
-
 struct Student
 { 
     short int rollNo;
@@ -17,6 +10,14 @@ struct Student
     int marksOfThreeSubject[3];
 	 	
 };
+
+void showStudentPerformance(struct Student studentInstance[],int totalNumberOfStudents);
+int calculateTotalMarks(int marksOfSTudent[]);
+float calculateAverageMarks(int marksOfSTudent[]);
+char calculateGrade(float averageMarks);
+char* gradeToStars(char grade);
+void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents);
+
 
 int main()
 {   
