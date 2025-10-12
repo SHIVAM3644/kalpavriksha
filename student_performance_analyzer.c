@@ -2,22 +2,27 @@
 #include <string.h>
 #define max_name_length 50
 #define max_input_scan 250
+#define SUBJECT_COUNT 3
 	
 struct Student
 { 
     short int rollNo;
     char nameOfStudent[max_name_length];
-    int marksOfThreeSubject[3];
+    int marksOfThreeSubject[SUBJECT_COUNT];
 	 	
 };
 
 void showStudentPerformance(struct Student studentInstance[],int totalNumberOfStudents);
-int calculateTotalMarks(int marksOfSTudent[]);
-float calculateAverageMarks(int marksOfSTudent[]);
-char calculateGrade(float averageMarks);
-char* gradeToStars(char grade);
-void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents);
 
+int calculateTotalMarks(int marksOfStudent[], int totalNumberOfSubjects);
+ 
+float calculateAverageMarks(int marksOfStudent[], int totalNumberOfSubjects);
+
+char calculateGrade(float averageMarks);
+
+char* gradeToStars(char grade);
+
+void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents);
 
 int main()
 {   
@@ -48,7 +53,6 @@ int main()
 	        &studentInstance[i].marksOfThreeSubject[2]);
 	} 
 	    
-
     showStudentPerformance(studentInstance,totalNumberOfStudents);
     
     printf("List of Roll Numbers: ");
@@ -61,17 +65,15 @@ int main()
     
 }
 
-
-
 void showStudentPerformance( struct Student studentInstance[],int totalNumberOfStudents )
 {   
     printf("\n");
     
 	for(int i=0 ; i<totalNumberOfStudents;i++)
 	{
-		int totalMarks = calculateTotalMarks(studentInstance[i].marksOfThreeSubject);
+		int totalMarks = calculateTotalMarks(studentInstance[i].marksOfThreeSubject,SUBJECT_COUNT);
 		
-        float averageMarks = calculateAverageMarks(studentInstance[i].marksOfThreeSubject);
+        float averageMarks = calculateAverageMarks(studentInstance[i].marksOfThreeSubject,SUBJECT_COUNT);
     
 	    printf("Roll: %d\n",studentInstance[i].rollNo);
 	    
@@ -79,7 +81,7 @@ void showStudentPerformance( struct Student studentInstance[],int totalNumberOfS
 	    
 	    printf("Total: %d\n",totalMarks);
 	    
-	    printf("Average: %f\n",averageMarks);
+	    printf("Average: %.2f\n",averageMarks);
 	    
 	    printf("Grade: %c\n",calculateGrade(averageMarks));
 	    
@@ -95,14 +97,21 @@ void showStudentPerformance( struct Student studentInstance[],int totalNumberOfS
 	}
 }
 
-int calculateTotalMarks(int marksOfSTudent[])
+int  calculateTotalMarks(int marksOfStudent[], int totalNumberOfSubjects)
 {
-	return marksOfSTudent[0]+marksOfSTudent[1]+ marksOfSTudent[2];
+    int totalMarks = 0;
+
+    for (int i = 0; i < totalNumberOfSubjects; i++)
+    {
+        totalMarks += marksOfStudent[i];
+    }
+
+    return totalMarks;
 }
 
-float calculateAverageMarks(int marksOfSTudent[])
+float calculateAverageMarks(int marksOfStudent[], int totalNumberOfSubjects)
 {
-	return ( marksOfSTudent[0]+marksOfSTudent[1]+ marksOfSTudent[2])/3.0;
+    return (float)calculateTotalMarks(marksOfStudent, totalNumberOfSubjects) / totalNumberOfSubjects;
 }
 
 char calculateGrade(float averageMarks)
@@ -131,14 +140,33 @@ char calculateGrade(float averageMarks)
 
 char* gradeToStars(char grade)
 {
-   switch(grade) {
-   	
-       case 'A': return "*****";
-       case 'B': return "****";
-       case 'C': return "***";
-       case 'D': return "**";
-       default:  return "";
-   }
+    switch (grade)
+    {
+        case 'A':
+        {
+            return "*****";
+        }
+
+        case 'B':
+        {
+            return "****";
+        }
+
+        case 'C':
+        {
+            return "***";
+        }
+
+        case 'D':
+        {
+            return "**";
+        }
+
+        default:
+        {
+            return "";
+        }
+    }
 }
 
 void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents) 
@@ -151,3 +179,4 @@ void printListOfRollNo(struct Student studentInstance[], int index, int totalStu
     
     printListOfRollNo(studentInstance, index + 1, totalStudents);
 }
+
