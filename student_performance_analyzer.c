@@ -12,6 +12,7 @@ struct Student
 	 	
 };
 
+
 void showStudentPerformance(struct Student studentInstance[],int totalNumberOfStudents);
 
 int calculateTotalMarks(int marksOfStudent[], int totalNumberOfSubjects);
@@ -23,6 +24,8 @@ char calculateGrade(float averageMarks);
 char* gradeToStars(char grade);
 
 void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents);
+
+
 
 int main()
 {   
@@ -65,6 +68,8 @@ int main()
     
 }
 
+
+
 void showStudentPerformance( struct Student studentInstance[],int totalNumberOfStudents )
 {   
     printf("\n");
@@ -97,6 +102,8 @@ void showStudentPerformance( struct Student studentInstance[],int totalNumberOfS
 	}
 }
 
+
+
 int  calculateTotalMarks(int marksOfStudent[], int totalNumberOfSubjects)
 {
     int totalMarks = 0;
@@ -109,10 +116,14 @@ int  calculateTotalMarks(int marksOfStudent[], int totalNumberOfSubjects)
     return totalMarks;
 }
 
+
+
 float calculateAverageMarks(int marksOfStudent[], int totalNumberOfSubjects)
 {
     return (float)calculateTotalMarks(marksOfStudent, totalNumberOfSubjects) / totalNumberOfSubjects;
 }
+
+
 
 char calculateGrade(float averageMarks)
 {
@@ -137,6 +148,8 @@ char calculateGrade(float averageMarks)
 		return 'F';
 	}
 }
+
+
 
 char* gradeToStars(char grade)
 {
@@ -168,6 +181,8 @@ char* gradeToStars(char grade)
         }
     }
 }
+
+
 
 void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents) 
 {
