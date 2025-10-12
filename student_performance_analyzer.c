@@ -8,8 +8,7 @@ struct Student
 { 
     short int rollNo;
     char nameOfStudent[max_name_length];
-    int marksOfThreeSubject[SUBJECT_COUNT];
-	 	
+    int marksOfThreeSubject[SUBJECT_COUNT]; 	
 };
 
 
@@ -24,7 +23,6 @@ char calculateGrade(float averageMarks);
 char* gradeToStars(char grade);
 
 void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents);
-
 
 
 int main()
@@ -47,7 +45,6 @@ int main()
         
         line[strcspn(line, "\n")] = '\0';
 
-
         sscanf(line, "%hd %[^\n0123456789] %d %d %d",
             &studentInstance[i].rollNo,
             studentInstance[i].nameOfStudent,
@@ -64,10 +61,9 @@ int main()
     
     printf("\n");
 
-     return 0;
+    return 0;
     
 }
-
 
 
 void showStudentPerformance( struct Student studentInstance[],int totalNumberOfStudents )
@@ -94,14 +90,13 @@ void showStudentPerformance( struct Student studentInstance[],int totalNumberOfS
 	    {    
 	        printf("\n");
 	       	continue;
-	    	
-	    }else
-	    {
+	    } 
+        else 
+        {
 	    	printf("Performance: %s\n\n",gradeToStars(calculateGrade(averageMarks)));
 	    }
 	}
 }
-
 
 
 int  calculateTotalMarks(int marksOfStudent[], int totalNumberOfSubjects)
@@ -117,12 +112,10 @@ int  calculateTotalMarks(int marksOfStudent[], int totalNumberOfSubjects)
 }
 
 
-
 float calculateAverageMarks(int marksOfStudent[], int totalNumberOfSubjects)
 {
     return (float)calculateTotalMarks(marksOfStudent, totalNumberOfSubjects) / totalNumberOfSubjects;
 }
-
 
 
 char calculateGrade(float averageMarks)
@@ -130,25 +123,24 @@ char calculateGrade(float averageMarks)
 	if(averageMarks>85.0 && averageMarks<100.0)
 	{
 		return 'A';
-		
-	}else if(averageMarks>70.0 && averageMarks<85.0)
+	}
+    else if(averageMarks>70.0 && averageMarks<85.0)
 	{
 		return 'B';
-		
-	}else if(averageMarks>50.0 && averageMarks<70.0)
+	}
+    else if(averageMarks>50.0 && averageMarks<70.0)
 	{
 		return 'C';
-		
-	}else if(averageMarks>35.0 && averageMarks<50.0)
+	}
+    else if(averageMarks>35.0 && averageMarks<50.0)
 	{
 		return 'D';
-		
-	}else 
+	}
+    else 
 	{
 		return 'F';
 	}
 }
-
 
 
 char* gradeToStars(char grade)
@@ -183,15 +175,13 @@ char* gradeToStars(char grade)
 }
 
 
-
 void printListOfRollNo(struct Student studentInstance[], int index, int totalStudents) 
 {
     if(index >= totalStudents)
 	{
-	     return;	
+	    return;	
 	}
     printf("%d ", studentInstance[index].rollNo);
     
     printListOfRollNo(studentInstance, index + 1, totalStudents);
 }
-
