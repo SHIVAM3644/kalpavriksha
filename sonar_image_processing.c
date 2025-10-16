@@ -32,11 +32,11 @@ int main(void)
     {
         printf("\nOriginal:\n");
 
-        for (int i = 0; i < noOfDimension; i++)
+        for (int rowIndex = 0; rowIndex < noOfDimension; rowIndex++)
         {
-            for (int j = 0; j < noOfDimension; j++)
+            for (int columnIndex = 0; columnIndex < noOfDimension; columnIndex++)
             {
-                *(pointerToArray + i * noOfDimension + j) = rand() % 256;
+                *(pointerToArray + rowIndex * noOfDimension + columnIndex) = rand() % 256;
             }
         }
 
@@ -54,11 +54,11 @@ int main(void)
 
 void printMatrix(int *pointerToArray, int dimensionOfMatrix)
 {
-    for (int i = 0; i < dimensionOfMatrix; i++)
+    for (int rowIndex = 0; rowIndex < dimensionOfMatrix; rowIndex++)
     {
-        for (int j = 0; j < dimensionOfMatrix; j++)
+        for (int columnIndex = 0; columnIndex < dimensionOfMatrix; columnIndex++)
         {
-            printf("%d ", *(pointerToArray + i * dimensionOfMatrix + j));
+            printf("%d ", *(pointerToArray + rowIndex * dimensionOfMatrix + columnIndex));
         }
         printf("\n");
     }
@@ -71,21 +71,21 @@ int validateInput(int noOfDimension)
 
 void getRotatedMatrix(int *pointerToArray, int dimensionOfMatrix)
 {
-    for (int i = 0; i < dimensionOfMatrix - 1; i++)
+    for (int rowIndex = 0; rowIndex < dimensionOfMatrix - 1; rowIndex++)
     {
-        for (int j = i + 1; j < dimensionOfMatrix; j++)
+        for (int columnIndex = rowIndex + 1; columnIndex < dimensionOfMatrix; columnIndex++)
         {
-            swapDigits(pointerToArray + i * dimensionOfMatrix + j,
-                        pointerToArray + j * dimensionOfMatrix + i);
+            swapDigits(pointerToArray + rowIndex * dimensionOfMatrix + columnIndex,
+                        pointerToArray + columnIndex * dimensionOfMatrix + rowIndex);
         }
     }
 
-    for (int i = 0; i < dimensionOfMatrix; i++)
+    for (int rowIndex = 0; rowIndex < dimensionOfMatrix; rowIndex++)
     {
-        for (int j = 0; j < dimensionOfMatrix / 2; j++)
+        for (int columnIndex = 0; columnIndex < dimensionOfMatrix / 2; columnIndex++)
         {
-            swapDigits(pointerToArray + i * dimensionOfMatrix + j,
-                        pointerToArray + i * dimensionOfMatrix + (dimensionOfMatrix - 1 - j));
+            swapDigits(pointerToArray + rowIndex * dimensionOfMatrix + columnIndex,
+                        pointerToArray + rowIndex * dimensionOfMatrix + (dimensionOfMatrix - 1 - columnIndex));
         }
     }
 
@@ -160,7 +160,7 @@ void getSmoothingMatrix(int *pointerToArray, int dimensionOfMatrix)
 
 void swapDigits(int *firstValue, int *secondValue)
 {
-    int temp = *firstValue;
+    int temporaryVariable = *firstValue;
     *firstValue = *secondValue;
-    *secondValue = temp;
+    *secondValue = temporaryVariable;
 }
