@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define startRangeOfInput 2
+#define endRangeOfInput 10
+
 void printMatrix(int *pointerToArray, int dimensionOfMatrix);
-int validateInput(int noOfDimension);
-void getRotatedMatrix(int *pointerToArray, int dimensionOfMatrix);
-void getSmoothingMatrix(int *pointerToArray, int dimensionOfMatrix);
-void swapDigits(int *firstValue, int *secondValue);
+int  validateInput(int noOfDimension);
+void rotateMatrixInPlace(int *pointerToArray, int dimensionOfMatrix);
+void applySmoothingFilter(int *pointerToArray, int dimensionOfMatrix);
+void swapElements(int *firstValue, int *secondValue);
 
 int main(void)
 {
@@ -42,18 +45,20 @@ int main(void)
 
         printMatrix(pointerToArray, noOfDimension);
 
-        printf("\nRotated:\n");
-        getRotatedMatrix(pointerToArray, noOfDimension);
+        rotateMatrixInPlace(pointerToArray, noOfDimension);
+        printf("\nRotated\n");
+        printMatrix(pointerToArray, noOfDimension);
 
+        applySmoothingFilter(pointerToArray, noOfDimension);
         printf("\nFinal Output:\n");
-        getSmoothingMatrix(pointerToArray, noOfDimension);
+        printMatrix(pointerToArray, noOfDimension);
     }
 
     return 0;
 }
 
 void printMatrix(int *pointerToArray, int dimensionOfMatrix)
-{
+{   
     for (int rowIndex = 0; rowIndex < dimensionOfMatrix; rowIndex++)
     {
         for (int columnIndex = 0; columnIndex < dimensionOfMatrix; columnIndex++)
@@ -66,33 +71,33 @@ void printMatrix(int *pointerToArray, int dimensionOfMatrix)
 
 int validateInput(int noOfDimension)
 {
-    return noOfDimension >= 2 && noOfDimension <= 10;
+    return noOfDimension >= startRangeOfInput && noOfDimension <= endRangeOfInput;
 }
 
-void getRotatedMatrix(int *pointerToArray, int dimensionOfMatrix)
+void rotateMatrixInPlace(int *pointerToArray, int dimensionOfMatrix)
 {
+    //this loop used to transpose a matrix 
     for (int rowIndex = 0; rowIndex < dimensionOfMatrix - 1; rowIndex++)
     {
         for (int columnIndex = rowIndex + 1; columnIndex < dimensionOfMatrix; columnIndex++)
         {
-            swapDigits(pointerToArray + rowIndex * dimensionOfMatrix + columnIndex,
-                        pointerToArray + columnIndex * dimensionOfMatrix + rowIndex);
+            swapElements(pointerToArray + rowIndex * dimensionOfMatrix + columnIndex,
+                         pointerToArray + columnIndex * dimensionOfMatrix + rowIndex);
         }
     }
-
+    
+    //this loop is used to reverse each row 
     for (int rowIndex = 0; rowIndex < dimensionOfMatrix; rowIndex++)
     {
         for (int columnIndex = 0; columnIndex < dimensionOfMatrix / 2; columnIndex++)
         {
-            swapDigits(pointerToArray + rowIndex * dimensionOfMatrix + columnIndex,
-                        pointerToArray + rowIndex * dimensionOfMatrix + (dimensionOfMatrix - 1 - columnIndex));
+            swapElements(pointerToArray + rowIndex * dimensionOfMatrix + columnIndex,
+                         pointerToArray + rowIndex * dimensionOfMatrix + (dimensionOfMatrix - 1 - columnIndex));
         }
     }
-
-    printMatrix(pointerToArray, dimensionOfMatrix);
 }
 
-void getSmoothingMatrix(int *pointerToArray, int dimensionOfMatrix)
+void applySmoothingFilter(int *pointerToArray, int dimensionOfMatrix)
 {
     int previousRowSmoothValues[10];
     int currentRowSmoothValues[10];
@@ -108,13 +113,14 @@ void getSmoothingMatrix(int *pointerToArray, int dimensionOfMatrix)
             int endRowIndex = (rowIndex < dimensionOfMatrix - 1) ? rowIndex + 1 : rowIndex;
             int startColumnIndex = (columnIndex > 0) ? columnIndex - 1 : columnIndex;
             int endColumnIndex = (columnIndex < dimensionOfMatrix - 1) ? columnIndex + 1 : columnIndex;
-
             int *neighbourPointer = pointerToArray + startRowIndex * dimensionOfMatrix + startColumnIndex;
-
+            
+            // Loop over neighbouring rows (above, same, and below current cell)
             for (int neighbourRowIndex = startRowIndex; neighbourRowIndex <= endRowIndex; neighbourRowIndex++)
             {
                 int windowWidth = endColumnIndex - startColumnIndex + 1;
-
+                
+                // Loop over neighbouring columns in the current neighbour row
                 for (int neighbourColumnOffset = 0; neighbourColumnOffset < windowWidth; neighbourColumnOffset++)
                 {
                     sumOfNeighbours += *(neighbourPointer + neighbourColumnOffset);
@@ -131,12 +137,14 @@ void getSmoothingMatrix(int *pointerToArray, int dimensionOfMatrix)
         {
             int *matrixWritePointer = pointerToArray + (rowIndex - 1) * dimensionOfMatrix;
 
+            // Copy previous row’s smoothed values into the matrix
             for (int columnOffset = 0; columnOffset < dimensionOfMatrix; columnOffset++)
             {
                 *(matrixWritePointer + columnOffset) = *(previousRowSmoothValues + columnOffset);
             }
         }
-
+        
+        // Store the current row as the previous row for next iteration
         for (int columnOffset = 0; columnOffset < dimensionOfMatrix; columnOffset++)
         {
             *(previousRowSmoothValues + columnOffset) = *(currentRowSmoothValues + columnOffset);
@@ -144,7 +152,8 @@ void getSmoothingMatrix(int *pointerToArray, int dimensionOfMatrix)
 
         canWritePreviousRow = 1;
     }
-
+    
+    // Write the last smoothed row to the matrix
     if (canWritePreviousRow)
     {
         int *matrixWritePointer = pointerToArray + (dimensionOfMatrix - 1) * dimensionOfMatrix;
@@ -154,11 +163,9 @@ void getSmoothingMatrix(int *pointerToArray, int dimensionOfMatrix)
             *(matrixWritePointer + columnOffset) = *(previousRowSmoothValues + columnOffset);
         }
     }
-
-    printMatrix(pointerToArray, dimensionOfMatrix);
 }
 
-void swapDigits(int *firstValue, int *secondValue)
+void swapElements(int *firstValue, int *secondValue)
 {
     int temporaryVariable = *firstValue;
     *firstValue = *secondValue;
