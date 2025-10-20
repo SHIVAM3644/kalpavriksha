@@ -4,6 +4,7 @@
 
 #define startRangeOfInput 2
 #define endRangeOfInput 10
+#define temporaryArraySize 10
 
 void printMatrix(int *pointerToArray, int dimensionOfMatrix);
 int  validateInput(int noOfDimension);
@@ -99,8 +100,8 @@ void rotateMatrixInPlace(int *pointerToArray, int dimensionOfMatrix)
 
 void applySmoothingFilter(int *pointerToArray, int dimensionOfMatrix)
 {
-    int previousRowSmoothValues[10];
-    int currentRowSmoothValues[10];
+    int previousRowSmoothValues[temporaryArraySize];
+    int currentRowSmoothValues[temporaryArraySize];
     int canWritePreviousRow = 0;
 
     for (int rowIndex = 0; rowIndex < dimensionOfMatrix; rowIndex++)
