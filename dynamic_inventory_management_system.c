@@ -3,15 +3,21 @@
 #include <string.h>
 #include <ctype.h>
 
-#define MAXiMUM_STRING_LENGHT 100
+#define MAXIMUM_STRING_LENGHT 100
 
 struct productDetail
 { 
     short int productId;
-    char productName[MAXiMUM_STRING_LENGHT];
+    char productName[MAXIMUM_STRING_LENGHT];
     float productPrice;
     short int productQuantity;
 };
+
+int validateIntegerInput(char *inputString);
+int validateFloatInput(char *inputString);
+short int getValidatedShortInt();
+float getValidatedFloat();
+void getValidatedString(char *destinationString, int maxLength);
 
 struct productDetail* addProduct(struct productDetail *productInstance, short int *totalNumberOfProducts);
 void showTotalProduct(struct productDetail *productInstance, short int totalNumberOfProducts);
@@ -20,6 +26,7 @@ void searchByID(struct productDetail *productInstance, short int totalNumberOfPr
 void searchByName(struct productDetail *productInstance, short int totalNumberOfProducts);
 void searchByPriceRange(struct productDetail *productInstance, short int totalNumberOfProducts);
 struct productDetail* deleteProduct(struct productDetail *productInstance, short int *totalNumberOfProducts);
+int isDuplicateId(struct productDetail *productInstance, short int totalNumberOfProducts, short int id);
 
 int main()
 {
@@ -27,12 +34,7 @@ int main()
     int choice;
 
     printf("Enter initial number of products: ");
-    if (scanf("%d", &totalNumberOfProducts) != 1)
-    {
-        printf("Error! Invalid Input");
-        return 1;
-    }
-    getchar();
+    totalNumberOfProducts = getValidatedShortInt();
 
     struct productDetail *productInstance;
     productInstance = (struct productDetail*)calloc(totalNumberOfProducts, sizeof(struct productDetail));
@@ -46,36 +48,26 @@ int main()
     for (int productIndex = 0; productIndex < totalNumberOfProducts; productIndex++)
     {
         printf("\nEnter details for product %d\n", productIndex + 1);
-
         printf("Product Id: ");
-        if (scanf("%hd", &(productInstance + productIndex)->productId) != 1)
+        short int tempId = getValidatedShortInt();
+
+        if (isDuplicateId(productInstance, productIndex, tempId))
         {
-            printf("Error! Invalid Id");
+            printf("Error! Duplicate Product ID. Please enter a unique ID.\n");
             productIndex--;
-            while (getchar() != '\n');
             continue;
         }
+
+        (productInstance + productIndex)->productId = tempId;
 
         printf("Product Name: ");
-        scanf(" %99[^\n]", (productInstance + productIndex)->productName);
+        getValidatedString((productInstance + productIndex)->productName, MAXIMUM_STRING_LENGHT);
 
         printf("Product Price: ");
-        if (scanf("%f", &(productInstance + productIndex)->productPrice) != 1)
-        {
-            printf("Error! Invalid Product price");
-            productIndex--;
-            while (getchar() != '\n');
-            continue;
-        }
+        (productInstance + productIndex)->productPrice = getValidatedFloat();
 
         printf("Product Quantity: ");
-        if (scanf("%hd", &(productInstance + productIndex)->productQuantity) != 1)
-        {
-            printf("Error! Invalid Product Quantity");
-            productIndex--;
-            while (getchar() != '\n');
-            continue;
-        }
+        (productInstance + productIndex)->productQuantity = getValidatedShortInt();
     }
 
     do
@@ -90,8 +82,7 @@ int main()
         printf("7. Delete Product\n");
         printf("8. Exit\n");
         printf("Enter your choice: ");
-        scanf("%d", &choice);
-        getchar();
+        choice = getValidatedShortInt();
 
         switch (choice)
         {
@@ -129,7 +120,7 @@ int main()
 
 void showTotalProduct(struct productDetail *productInstance, short int totalNumberOfProducts)
 {
-    printf("====== PRODUCT LIST=====\n\n");
+    printf("====== PRODUCT LIST ======\n\n");
 
     for (int productIndex = 0; productIndex < totalNumberOfProducts; productIndex++)
     {
@@ -152,22 +143,59 @@ struct productDetail* addProduct(struct productDetail *productInstance, short in
     }
 
     printf("\nEnter new Product Detail\n");
+
     printf("Product Id: ");
-    scanf("%hd", &(productInstance[*totalNumberOfProducts - 1].productId));
-    getchar();
+    short int newId = getValidatedShortInt();
+
+    if (isDuplicateId(productInstance, *totalNumberOfProducts - 1, newId))
+    {
+        printf("Error! Duplicate Product ID. Product not added.\n");
+        (*totalNumberOfProducts)--;
+        return productInstance;
+    }
+
+    productInstance[*totalNumberOfProducts - 1].productId = newId;
 
     printf("Product Name: ");
-    scanf(" %99[^\n]", productInstance[*totalNumberOfProducts - 1].productName);
+    getValidatedString(productInstance[*totalNumberOfProducts - 1].productName, MAXIMUM_STRING_LENGHT);
 
     printf("Product Price: ");
-    scanf("%f", &(productInstance[*totalNumberOfProducts - 1].productPrice));
+    productInstance[*totalNumberOfProducts - 1].productPrice = getValidatedFloat();
 
     printf("Product Quantity: ");
-    scanf("%hd", &(productInstance[*totalNumberOfProducts - 1].productQuantity));
+    productInstance[*totalNumberOfProducts - 1].productQuantity = getValidatedShortInt();
 
     printf("Product added successfully!\n");
 
     return productInstance;
+}
+
+void updateQuantity(struct productDetail *productInstance, short int totalNumberOfProducts)
+{
+    short int productIdToUpdate;
+    int updatedQuantity;
+    int productFound = 0;
+
+    printf("Enter Product ID to update quantity: ");
+    productIdToUpdate = getValidatedShortInt();
+
+    for (int productIndex = 0; productIndex < totalNumberOfProducts; productIndex++)
+    {
+        if ((productInstance + productIndex)->productId == productIdToUpdate)
+        {
+            productFound = 1;
+            printf("Enter new Quantity: ");
+            updatedQuantity = getValidatedShortInt();
+            (productInstance + productIndex)->productQuantity = updatedQuantity;
+            printf("Quantity updated successfully!\n");
+            break;
+        }
+    }
+
+    if (!productFound)
+    {
+        printf("Product Not Found To Update.\n");
+    }
 }
 
 void searchByID(struct productDetail *productInstance, short int totalNumberOfProducts)
@@ -176,13 +204,7 @@ void searchByID(struct productDetail *productInstance, short int totalNumberOfPr
     int productFound = 0;
 
     printf("Enter Product ID to search: ");
-    if (scanf("%hd", &searchId) != 1)
-    {
-        printf("Error! Invalid Input\n");
-        while (getchar() != '\n');
-        return;
-    }
-    getchar();
+    searchId = getValidatedShortInt();
 
     for (int productIndex = 0; productIndex < totalNumberOfProducts; productIndex++)
     {
@@ -205,70 +227,16 @@ void searchByID(struct productDetail *productInstance, short int totalNumberOfPr
     }
 }
 
-void updateQuantity(struct productDetail *productInstance, short int totalNumberOfProducts)
-{
-    short int productIdToUpdate;
-    int updatedQuantity;
-    int productFound = 0;
-
-    printf("Enter Product ID to update quantity: ");
-    if (scanf("%hd", &productIdToUpdate) != 1)
-    {
-        printf("Error! Invalid Product ID\n");
-        while (getchar() != '\n');
-        return;
-    }
-    getchar();
-
-    for (int productIndex = 0; productIndex < totalNumberOfProducts; productIndex++)
-    {
-        if ((productInstance + productIndex)->productId == productIdToUpdate)
-        {
-            productFound = 1;
-
-            printf("Enter new Quantity: ");
-            if (scanf("%hd", &updatedQuantity) != 1)
-            {
-                printf("Error! Invalid Quantity\n");
-                while (getchar() != '\n');
-                return;
-            }
-            getchar();
-
-            (productInstance + productIndex)->productQuantity = updatedQuantity;
-            printf("Quantity updated successfully!\n");
-            break;
-        }
-    }
-
-    if (!productFound)
-    {
-        printf("Product Not Found To Update.\n");
-    }
-}
-
 void searchByPriceRange(struct productDetail *productInstance, short int totalNumberOfProducts)
 {
     float minimumPrice, maximumPrice;
     int productFound = 0;
 
     printf("Enter minimum price: ");
-    if (scanf("%f", &minimumPrice) != 1)
-    {
-        printf("Error! Invalid Price\n");
-        while (getchar() != '\n');
-        return;
-    }
-    getchar();
+    minimumPrice = getValidatedFloat();
 
     printf("Enter maximum price: ");
-    if (scanf("%f", &maximumPrice) != 1)
-    {
-        printf("Error! Invalid Price\n");
-        while (getchar() != '\n');
-        return;
-    }
-    getchar();
+    maximumPrice = getValidatedFloat();
 
     for (int productIndex = 0; productIndex < totalNumberOfProducts; productIndex++)
     {
@@ -292,73 +260,60 @@ void searchByPriceRange(struct productDetail *productInstance, short int totalNu
 
 void searchByName(struct productDetail *productInstance, short int totalNumberOfProducts)
 {
-    char searchName[MAXiMUM_STRING_LENGHT];
+    char searchName[MAXIMUM_STRING_LENGHT];
     int productFound = 0;
 
     printf("Enter Product Name to search: ");
-    scanf(" %99[^\n]", searchName);
+    getValidatedString(searchName, MAXIMUM_STRING_LENGHT);
 
-    char lowerSearch[MAXiMUM_STRING_LENGHT];
-    char *sourcePointer = searchName;
-    char *destinationPointer = lowerSearch;
-
-    while (*sourcePointer != '\0')
+    char lowerSearch[MAXIMUM_STRING_LENGHT];
+    int searchCharIndex = 0;
+    while (searchName[searchCharIndex] != '\0')
     {
-        *destinationPointer = tolower(*sourcePointer);
-        sourcePointer++;
-        destinationPointer++;
+        lowerSearch[searchCharIndex] = tolower(searchName[searchCharIndex]);
+        searchCharIndex++;
     }
-    *destinationPointer = '\0';
+    lowerSearch[searchCharIndex] = '\0';
 
     printf("\nSearch Results:\n");
 
-    for (struct productDetail *currentProduct = productInstance;
-         currentProduct < productInstance + totalNumberOfProducts;
-         currentProduct++)
+    for (int productIndex = 0; productIndex < totalNumberOfProducts; productIndex++)
     {
-        char lowerProductName[MAXiMUM_STRING_LENGHT];
-        char *sourceProductPointer = currentProduct->productName;
-        char *destinationProductPointer = lowerProductName;
+        char lowerProductName[MAXIMUM_STRING_LENGHT];
+        int charPosition = 0;
 
-        while (*sourceProductPointer != '\0')
+        while ((productInstance + productIndex)->productName[charPosition] != '\0')
         {
-            *destinationProductPointer = tolower(*sourceProductPointer);
-            sourceProductPointer++;
-            destinationProductPointer++;
+            lowerProductName[charPosition] = tolower((productInstance + productIndex)->productName[charPosition]);
+            charPosition++;
         }
-        *destinationProductPointer = '\0';
+        lowerProductName[charPosition] = '\0';
 
-        char *productPointer = lowerProductName;
-        int matchFound = 0;
-
-        while (*productPointer != '\0')
+        int mainIndex = 0, matchFound = 0;
+        while (lowerProductName[mainIndex] != '\0')
         {
-            char *temporaryProductPointer = productPointer;
-            char *temporarySearchPointer = lowerSearch;
-
-            while (*temporaryProductPointer != '\0' && *temporarySearchPointer != '\0' &&
-                   *temporaryProductPointer == *temporarySearchPointer)
+            int subIndex = 0;
+            while (lowerProductName[mainIndex + subIndex] != '\0' && lowerSearch[subIndex] != '\0' &&
+                   lowerProductName[mainIndex + subIndex] == lowerSearch[subIndex])
             {
-                temporaryProductPointer++;
-                temporarySearchPointer++;
+                subIndex++;
             }
 
-            if (*temporarySearchPointer == '\0')
+            if (lowerSearch[subIndex] == '\0')
             {
                 matchFound = 1;
                 break;
             }
-
-            productPointer++;
+            mainIndex++;
         }
 
         if (matchFound)
         {
             printf(" Product ID: %hd | Name: %s | Price: %.2f | Quantity: %hd\n",
-                   currentProduct->productId,
-                   currentProduct->productName,
-                   currentProduct->productPrice,
-                   currentProduct->productQuantity);
+                   (productInstance + productIndex)->productId,
+                   (productInstance + productIndex)->productName,
+                   (productInstance + productIndex)->productPrice,
+                   (productInstance + productIndex)->productQuantity);
             productFound++;
         }
     }
@@ -381,13 +336,7 @@ struct productDetail* deleteProduct(struct productDetail *productInstance, short
     int productFound = 0;
 
     printf("Enter Product ID to delete: ");
-    if (scanf("%hd", &productIdToDelete) != 1)
-    {
-        printf("Error! Invalid Product ID\n");
-        while (getchar() != '\n');
-        return productInstance;
-    }
-    getchar();
+    productIdToDelete = getValidatedShortInt();
 
     for (int productIndex = 0; productIndex < *totalNumberOfProducts; productIndex++)
     {
@@ -402,13 +351,13 @@ struct productDetail* deleteProduct(struct productDetail *productInstance, short
 
             (*totalNumberOfProducts)--;
 
-            struct productDetail *temperoryPointer = realloc(productInstance, (*totalNumberOfProducts) * sizeof(struct productDetail));
-            if (temperoryPointer != NULL || *totalNumberOfProducts == 0)
+            struct productDetail *temporaryPointer = realloc(productInstance, (*totalNumberOfProducts) * sizeof(struct productDetail));
+            if (temporaryPointer != NULL || *totalNumberOfProducts == 0)
             {
-                productInstance = temperoryPointer;
+                productInstance = temporaryPointer;
             }
 
-            printf("Product deleted successfully!");
+            printf("Product deleted successfully!\n");
             break;
         }
     }
@@ -419,4 +368,102 @@ struct productDetail* deleteProduct(struct productDetail *productInstance, short
     }
 
     return productInstance;
+}
+
+int isDuplicateId(struct productDetail *productInstance, short int totalNumberOfProducts, short int id)
+{
+    for (int productIndex = 0; productIndex < totalNumberOfProducts; productIndex++)
+    {
+        if ((productInstance + productIndex)->productId == id)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int validateIntegerInput(char *inputString)
+{
+    int charIndex = 0;
+    if (inputString[0] == '\0')
+        return 0;
+    if (inputString[0] == '-' || inputString[0] == '+')
+        charIndex++;
+
+    while (inputString[charIndex] != '\0')
+    {
+        if (inputString[charIndex] < '0' || inputString[charIndex] > '9')
+            return 0;
+        charIndex++;
+    }
+    return 1;
+}
+
+int validateFloatInput(char *inputString)
+{
+    int charIndex = 0;
+    int dotCount = 0;
+    if (inputString[0] == '\0')
+        return 0;
+    if (inputString[0] == '-' || inputString[0] == '+')
+        charIndex++;
+
+    while (inputString[charIndex] != '\0')
+    {
+        if (inputString[charIndex] == '.')
+        {
+            dotCount++;
+            if (dotCount > 1)
+                return 0;
+        }
+        else if (inputString[charIndex] < '0' || inputString[charIndex] > '9')
+            return 0;
+        charIndex++;
+    }
+    return 1;
+}
+
+short int getValidatedShortInt()
+{
+    char inputBuffer[MAXIMUM_STRING_LENGHT];
+    while (1)
+    {
+        fgets(inputBuffer, sizeof(inputBuffer), stdin);
+        int index = 0;
+        while (inputBuffer[index] != '\n' && inputBuffer[index] != '\0')
+            index++;
+        inputBuffer[index] = '\0';
+        if (validateIntegerInput(inputBuffer))
+        {
+            return (short int)atoi(inputBuffer);
+        }
+        printf("Invalid input! Enter a valid integer: ");
+    }
+}
+
+float getValidatedFloat()
+{
+    char inputBuffer[MAXIMUM_STRING_LENGHT];
+    while (1)
+    {
+        fgets(inputBuffer, sizeof(inputBuffer), stdin);
+        int index = 0;
+        while (inputBuffer[index] != '\n' && inputBuffer[index] != '\0')
+            index++;
+        inputBuffer[index] = '\0';
+        if (validateFloatInput(inputBuffer))
+        {
+            return (float)atof(inputBuffer);
+        }
+        printf("Invalid input! Enter a valid number: ");
+    }
+}
+
+void getValidatedString(char *destinationString, int maximumLength)
+{
+    fgets(destinationString, maximumLength, stdin);
+    int index = 0;
+    while (destinationString[index] != '\n' && destinationString[index] != '\0')
+        index++;
+    destinationString[index] = '\0';
 }
