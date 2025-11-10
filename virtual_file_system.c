@@ -665,8 +665,8 @@ int main()
 
     printf("Compact VFS Ready. Type 'exit' to quit.\n");
 
-    inputLine = NULL;
-    inputBufferSize = 0;
+    inputLine = (char*)malloc(inputBufferSize);
+    inputBufferSize = 1024;
 
     while (1)
     {
@@ -680,7 +680,7 @@ int main()
             printf("\n%s > ", currentDirectoryNode->name);
         }
     
-        if (getline(&inputLine, &inputBufferSize, stdin) == -1)
+        if (fgets(inputLine, inputBufferSize, stdin) == NULL)
         {
             break;
         }
