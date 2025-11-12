@@ -38,8 +38,14 @@ static char *copyString(const char *sourceString)
 {
     char *copyString;
     copyString = malloc(strlen(sourceString) + 1);
-    strcpy(copyString, sourceString);
 
+    if (!copyString)
+    {
+        fprintf(stderr, "Memory allocation failed in copyString.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(copyString, sourceString);
     return copyString;
 }
 
@@ -78,6 +84,13 @@ static void initialize_free_blocks()
     {
         FreeBlock *newFreeBlockNode;
         newFreeBlockNode = malloc(sizeof(FreeBlock));
+
+        if (!newFreeBlockNode)
+        {
+            fprintf(stderr, "Memory allocation failed while initializing free blocks.\n");
+            exit(EXIT_FAILURE);
+        }
+
         newFreeBlockNode->blockIndex = blockCounterIndex;
         newFreeBlockNode->next = NULL;
         newFreeBlockNode->prev = freeBlockListTail;
@@ -130,6 +143,12 @@ static void free_block(int blockIndexToFree)
     FreeBlock *freedBlockNode;
     freedBlockNode = malloc(sizeof(FreeBlock));
 
+    if (!freedBlockNode)
+    {
+        fprintf(stderr, "Memory allocation failed in free_block.\n");
+        exit(EXIT_FAILURE);
+    }
+
     freedBlockNode->blockIndex = blockIndexToFree;
     freedBlockNode->next = NULL;
     freedBlockNode->prev = freeBlockListTail;
@@ -151,6 +170,12 @@ static FileNode *create_node(const char *nodeName, int isDirectoryFlag)
 {
     FileNode *newNode;
     newNode = malloc(sizeof(FileNode));
+
+    if (!newNode)
+    {
+        fprintf(stderr, "Memory allocation failed in create_node.\n");
+        exit(EXIT_FAILURE);
+    }
 
     strncpy(newNode->name, nodeName, MAX_NAME_LENGTH);
     newNode->name[MAX_NAME_LENGTH] = '\0';
@@ -413,6 +438,13 @@ static void command_write(const char *fileName, const char *content)
     }
 
     fileNodePointer->blockPointers = malloc(requiredBlocks * sizeof(int));
+
+    if (!fileNodePointer->blockPointers)
+    {
+        fprintf(stderr, "Memory allocation failed while writing file.\n");
+        exit(EXIT_FAILURE);
+    }
+
     fileNodePointer->blockCount = requiredBlocks;
     fileNodePointer->sizeBytes = contentLength;
 
@@ -459,6 +491,13 @@ static void command_read(const char *fileName)
     }
 
     buffer = malloc(fileNodePointer->sizeBytes + 1);
+
+    if (!buffer)
+    {
+        fprintf(stderr, "Memory allocation failed while reading file.\n");
+        exit(EXIT_FAILURE);
+    }
+
     positionIndex = 0;
 
     for (blockCounterIndex = 0; blockCounterIndex < fileNodePointer->blockCount; blockCounterIndex++)
@@ -658,6 +697,13 @@ int main()
     char *argumentTwo;
 
     virtualDisk = calloc(TOTAL_BLOCKS, BLOCK_SIZE);
+
+    if (!virtualDisk)
+    { 
+        fprintf(stderr, "Virtual disk memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+
     initialize_free_blocks();
 
     rootDirectoryNode = create_node("/", 1);
@@ -665,8 +711,14 @@ int main()
 
     printf("Compact VFS Ready. Type 'exit' to quit.\n");
 
-    inputLine = (char*)malloc(inputBufferSize);
     inputBufferSize = 1024;
+    inputLine = (char*)malloc(inputBufferSize);
+
+    if (!inputLine)
+    {
+        fprintf(stderr, "Input buffer allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
 
     while (1)
     {
