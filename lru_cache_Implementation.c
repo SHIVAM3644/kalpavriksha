@@ -29,7 +29,7 @@ Node* createNode(int key, const char* value)
     if (node == NULL)
     {
         printf("Memory allocation failed\n");
-        exit(1);
+        return NULL;
     }
 
     node->key = key;
@@ -46,7 +46,7 @@ LRUCache* createCache(int capacity)
     if (cache == NULL)
     {
         printf("Memory allocation failed\n");
-        exit(1);
+        return NULL;
     }
 
     cache->capacity = capacity;
@@ -150,6 +150,12 @@ void put(LRUCache* cache, int key, const char* value)
     }
 
     Node* node = createNode(key, value);
+
+    if (node == NULL)
+    {
+        return;
+    }
+
     node->next = cache->head;
 
     if (cache->head)
@@ -230,6 +236,12 @@ int main()
 
             int capacityValue = atoi(firstArgument);
             cacheInstance = createCache(capacityValue);
+
+            if (cacheInstance == NULL)
+            {
+                continue;
+            }
+
         }
         else if (strcmp(commandWord, "put") == 0)
         {
