@@ -66,9 +66,7 @@ static void *safe_malloc(size_t size)
 
     if (pointer == NULL)
     {
-        printf("Fatal: memory allocation failed\n");
-
-        exit(EXIT_FAILURE);
+        return NULL;
     }
 
     return pointer;
@@ -110,6 +108,12 @@ static int is_queue_empty(const LinkedQueue *queue)
 static void enqueue_process(LinkedQueue *queue, ProcessControlBlock *pcb)
 {
     QueueNode *node = (QueueNode *)safe_malloc(sizeof(QueueNode));
+
+    if (node == NULL)
+    {
+        printf("Error: could not allocate QueueNode.\n");
+        return;
+    }
 
     node->pcb = pcb;
     node->next = NULL;
@@ -224,8 +228,21 @@ static PidHashMap *create_pid_hashmap(int bucket_count)
 {
     PidHashMap *map = (PidHashMap *)safe_malloc(sizeof(PidHashMap));
 
+    if (map == NULL)
+    {
+        printf("Error: could not allocate hashmap.\n");
+        return NULL;
+    }
+
     map->bucket_count = bucket_count;
     map->buckets = (ProcessControlBlock **)safe_malloc(sizeof(ProcessControlBlock *) * bucket_count);
+
+    if (map->buckets == NULL)
+    {
+        printf("Error: could not allocate hashmap buckets.\n");
+        free(map);
+        return NULL;
+    }
 
     for (int bucket_index = 0; bucket_index < bucket_count; bucket_index++)
     {
@@ -304,6 +321,12 @@ static ProcessControlBlock *create_process_control_block(const char *name, int p
 {
     ProcessControlBlock *pcb = (ProcessControlBlock *)safe_malloc(sizeof(ProcessControlBlock));
 
+    if (pcb == NULL)
+    {
+        printf("Error: could not allocate PCB.\n");
+        return NULL;
+    }
+
     strncpy(pcb->process_name, name, MAX_PROCESS_NAME_LENGTH - 1);
     pcb->process_name[MAX_PROCESS_NAME_LENGTH - 1] = '\0';
     pcb->pid = pid;
@@ -351,6 +374,12 @@ static int parse_integer_strict(const char *token, int *value_out)
 static KillEvent *insert_kill_event_sorted(KillEvent *head, int pid, int tick_time)
 {
     KillEvent *new_event = (KillEvent *)safe_malloc(sizeof(KillEvent));
+
+    if (new_event == NULL)
+    {
+        printf("Error: could not allocate KillEvent.\n");
+        return head;
+    }
 
     new_event->pid = pid;
     new_event->tick_time = tick_time;
@@ -631,6 +660,12 @@ static void print_summary_table(const LinkedQueue *terminated_queue)
     }
 
     ProcessControlBlock **sorted_list = (ProcessControlBlock **)safe_malloc(sizeof(ProcessControlBlock *) * process_count);
+
+    if (sorted_list == NULL)
+    {
+        printf("Error: could not allocate summary list.\n");
+        return;
+    }
 
     iterator = terminated_queue->front;
     int index_position = 0;
