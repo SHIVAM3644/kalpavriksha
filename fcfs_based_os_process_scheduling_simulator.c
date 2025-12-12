@@ -60,15 +60,22 @@ typedef struct KillEvent
     struct KillEvent *next;
 } KillEvent;
 
+typedef struct SimulationContext
+{
+    PidHashMap *pcbs_map;
+    LinkedQueue *ready_queue;
+    LinkedQueue *waiting_queue;
+    LinkedQueue *terminated_queue;
+    KillEvent *kill_events_head;
+} SimulationContext;
+
 static void *safe_malloc(size_t size)
 {
     void *pointer = malloc(size);
-
     if (pointer == NULL)
     {
         return NULL;
     }
-
     return pointer;
 }
 
@@ -168,6 +175,7 @@ static int remove_process_from_queue_by_pid(LinkedQueue *queue, int pid_to_remov
             {
                 previous->next = current->next;
             }
+
             if (current == queue->rear)
             {
                 queue->rear = previous;
@@ -212,6 +220,7 @@ static void move_io_completed_to_ready(LinkedQueue *waiting_queue, LinkedQueue *
 
             current_pcb->state = PROCESS_STATE_READY;
             current_pcb->io_completed_at_tick = -1;
+
             enqueue_process(ready_queue, current_pcb);
             free(current);
         }
@@ -235,6 +244,7 @@ static PidHashMap *create_pid_hashmap(int bucket_count)
     }
 
     map->bucket_count = bucket_count;
+
     map->buckets = (ProcessControlBlock **)safe_malloc(sizeof(ProcessControlBlock *) * bucket_count);
 
     if (map->buckets == NULL)
@@ -283,6 +293,7 @@ static ProcessControlBlock *hashmap_find(PidHashMap *map, int pid)
         {
             return current;
         }
+
         current = current->next_in_hash;
     }
 
@@ -292,6 +303,7 @@ static ProcessControlBlock *hashmap_find(PidHashMap *map, int pid)
 static int hashmap_remove(PidHashMap *map, int pid)
 {
     int bucket_index = hashmap_hash_function(map, pid);
+
     ProcessControlBlock *previous = NULL;
     ProcessControlBlock *current = map->buckets[bucket_index];
 
@@ -307,6 +319,7 @@ static int hashmap_remove(PidHashMap *map, int pid)
             {
                 previous->next_in_hash = current->next_in_hash;
             }
+
             return 1;
         }
 
@@ -329,18 +342,23 @@ static ProcessControlBlock *create_process_control_block(const char *name, int p
 
     strncpy(pcb->process_name, name, MAX_PROCESS_NAME_LENGTH - 1);
     pcb->process_name[MAX_PROCESS_NAME_LENGTH - 1] = '\0';
+
     pcb->pid = pid;
     pcb->total_cpu_burst = cpu_burst;
     pcb->cpu_executed = 0;
+
     pcb->io_start_time = io_start_time;
     pcb->io_duration = io_duration;
     pcb->io_remaining = io_duration;
     pcb->io_completed_at_tick = -1;
+
     pcb->turnaround_time = -1;
     pcb->waiting_time = -1;
-    pcb->state = PROCESS_STATE_READY;
     pcb->completion_time = -1;
+
+    pcb->state = PROCESS_STATE_READY;
     pcb->has_started_io = 0;
+
     pcb->next_in_hash = NULL;
 
     return pcb;
@@ -367,7 +385,6 @@ static int parse_integer_strict(const char *token, int *value_out)
     }
 
     *value_out = (int)parsed_value;
-
     return 1;
 }
 
@@ -393,7 +410,7 @@ static KillEvent *insert_kill_event_sorted(KillEvent *head, int pid, int tick_ti
 
     KillEvent *previous = NULL;
     KillEvent *current = head;
-    
+
     while (current != NULL && current->tick_time <= tick_time)
     {
         previous = current;
@@ -422,8 +439,9 @@ static KillEvent *pop_kill_events_at_tick(KillEvent **head_reference, int tick)
 
     KillEvent *result_head = head;
     KillEvent *tail = head;
+
     head = head->next;
-    
+
     while (tail->next != NULL && tail->next->tick_time == tick)
     {
         tail = tail->next;
@@ -471,22 +489,195 @@ static ProcessControlBlock *dequeue_non_killed(LinkedQueue *ready_queue)
     }
 }
 
-static void run_fcfs_simulation(PidHashMap *pcbs_map, LinkedQueue *ready_queue, LinkedQueue *waiting_queue, LinkedQueue *terminated_queue, KillEvent *kill_events_head)
+static int count_active_processes(PidHashMap *map)
+{
+    int count = 0;
+
+    for (int bucket_index = 0; bucket_index < map->bucket_count; bucket_index++)
+    {
+        ProcessControlBlock *item = map->buckets[bucket_index];
+
+        while (item != NULL) 
+        { 
+            count++; 
+            item = item->next_in_hash; 
+        }
+    }
+
+    return count;
+}
+
+static int apply_kill_events(SimulationContext *context, int system_tick, ProcessControlBlock **running_process)
+{
+    int removed_processes = 0;
+    KillEvent *events_to_apply = pop_kill_events_at_tick(&context->kill_events_head, system_tick);
+    KillEvent *current_event = events_to_apply;
+  
+    while (current_event != NULL)
+    {
+        int kill_pid = current_event->pid;
+        ProcessControlBlock *target = hashmap_find(context->pcbs_map, kill_pid);
+      
+        if (target == NULL)
+        {
+            printf("Warning: KILL event at tick %d for PID %d - process not found.\n", system_tick, kill_pid);
+            current_event = current_event->next;
+            continue;
+        }
+       
+        if (*running_process != NULL && (*running_process)->pid == kill_pid)
+        {
+            (*running_process)->state = PROCESS_STATE_KILLED;
+            (*running_process)->completion_time = system_tick;
+            (*running_process)->turnaround_time = -1;
+            (*running_process)->waiting_time = -1;
+            enqueue_process(context->terminated_queue, *running_process);
+            hashmap_remove(context->pcbs_map, kill_pid);
+            *running_process = NULL;
+            removed_processes++;
+        }
+        else
+        {
+            int removed_from_ready = remove_process_from_queue_by_pid(context->ready_queue, kill_pid);
+            
+            if (removed_from_ready)
+            {
+                target->state = PROCESS_STATE_KILLED;
+                target->completion_time = system_tick;
+                target->turnaround_time = -1;
+                target->waiting_time = -1;
+                enqueue_process(context->terminated_queue, target);
+                hashmap_remove(context->pcbs_map, kill_pid);
+                removed_processes++;
+            }
+            else
+            {
+                int removed_from_waiting = remove_process_from_queue_by_pid(context->waiting_queue, kill_pid);
+
+                if (removed_from_waiting)
+                {
+                    target->state = PROCESS_STATE_KILLED;
+                    target->completion_time = system_tick;
+                    target->turnaround_time = -1;
+                    target->waiting_time = -1;
+                    enqueue_process(context->terminated_queue, target);
+                    hashmap_remove(context->pcbs_map, kill_pid);
+                    removed_processes++;
+                }
+                else
+                {
+                    if (target->state != PROCESS_STATE_TERMINATED && target->state != PROCESS_STATE_KILLED)
+                    {
+                        target->state = PROCESS_STATE_KILLED;
+                        target->completion_time = system_tick;
+                        target->turnaround_time = -1;
+                        target->waiting_time = -1;
+                        enqueue_process(context->terminated_queue, target);
+                        hashmap_remove(context->pcbs_map, kill_pid);
+                        removed_processes++;
+                    }
+                }
+            }
+        }
+        current_event = current_event->next;
+    }
+
+    free_kill_event_list(events_to_apply);
+    return removed_processes;
+}
+
+static void pick_next_process(SimulationContext *context, ProcessControlBlock **running_process)
+{
+    if (*running_process != NULL)
+    {
+        return;
+    } 
+
+    ProcessControlBlock *next = dequeue_non_killed(context->ready_queue);
+
+    if (next != NULL)
+    {
+        next->state = PROCESS_STATE_RUNNING;
+        *running_process = next;
+    }
+}
+
+static int execute_cpu_cycle(SimulationContext *context, ProcessControlBlock **running_process, int system_tick)
+{
+    if (*running_process == NULL)
+    {
+        return 0;
+    }
+
+    (*running_process)->cpu_executed += 1;
+
+    if (!(*running_process)->has_started_io && (*running_process)->io_start_time >= 0 && (*running_process)->cpu_executed == (*running_process)->io_start_time)
+    {
+        (*running_process)->has_started_io = 1;
+        (*running_process)->io_remaining = (*running_process)->io_duration;
+        (*running_process)->io_completed_at_tick = -1;
+        (*running_process)->state = PROCESS_STATE_WAITING;
+        enqueue_process(context->waiting_queue, *running_process);
+        *running_process = NULL;
+
+        return 0;
+    }
+    if (*running_process != NULL && (*running_process)->cpu_executed >= (*running_process)->total_cpu_burst)
+    {
+        (*running_process)->state = PROCESS_STATE_TERMINATED;
+        (*running_process)->completion_time = system_tick + 1;
+        (*running_process)->turnaround_time = (*running_process)->completion_time;
+        (*running_process)->waiting_time = (*running_process)->turnaround_time - (*running_process)->total_cpu_burst;
+        enqueue_process(context->terminated_queue, *running_process);
+        hashmap_remove(context->pcbs_map, (*running_process)->pid);
+        *running_process = NULL;
+        return 1;
+    }
+    return 0;
+}
+
+static void process_waiting_queue(SimulationContext *context, int system_tick)
+{
+    QueueNode *cursor = context->waiting_queue->front;
+
+    while (cursor != NULL)
+    {
+        ProcessControlBlock *waiting_pcb = cursor->pcb;
+
+        if (waiting_pcb->state == PROCESS_STATE_KILLED) 
+        { 
+            cursor = cursor->next; 
+            continue; 
+        }
+
+        if (waiting_pcb->io_remaining > 0)
+        {
+            waiting_pcb->io_remaining -= 1;
+
+            if (waiting_pcb->io_remaining == 0)
+            {
+                waiting_pcb->io_completed_at_tick = system_tick;
+            }
+        }
+        cursor = cursor->next;
+    }
+}
+
+static int should_stop_simulation(SimulationContext *context, ProcessControlBlock *running_process, int active_remaining)
+{
+    if (active_remaining <= 0 && running_process == NULL && is_queue_empty(context->ready_queue) && is_queue_empty(context->waiting_queue))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+static void run_fcfs_simulation(SimulationContext *context)
 {
     int system_tick = 0;
     ProcessControlBlock *currently_running = NULL;
-    int active_processes_remaining = 0;
-
-    for (int bucket_index = 0; bucket_index < pcbs_map->bucket_count; bucket_index++)
-    {
-        ProcessControlBlock *item = pcbs_map->buckets[bucket_index];
-
-        while (item != NULL)
-        {
-            active_processes_remaining++;
-            item = item->next_in_hash;
-        }
-    }
+    int active_processes_remaining = count_active_processes(context->pcbs_map);
 
     if (active_processes_remaining == 0)
     {
@@ -495,155 +686,27 @@ static void run_fcfs_simulation(PidHashMap *pcbs_map, LinkedQueue *ready_queue, 
 
     while (1)
     {
-        KillEvent *events_to_apply = pop_kill_events_at_tick(&kill_events_head, system_tick);
-        KillEvent *current_kill_event = events_to_apply;
-
-        while (current_kill_event != NULL)
-        {
-            int kill_pid = current_kill_event->pid;
-            ProcessControlBlock *target_pcb = hashmap_find(pcbs_map, kill_pid);
-
-            if (target_pcb == NULL)
-            {
-                fprintf(stderr, "Warning: KILL event at tick %d for PID %d - process not found.\n", system_tick, kill_pid);
-            }
-            else
-            {
-                if (currently_running != NULL && currently_running->pid == kill_pid)
-                {
-                    currently_running->state = PROCESS_STATE_KILLED;
-                    currently_running->completion_time = system_tick;
-                    currently_running->turnaround_time = -1;
-                    currently_running->waiting_time = -1;
-                    enqueue_process(terminated_queue, currently_running);
-                    hashmap_remove(pcbs_map, kill_pid);
-                    currently_running = NULL;
-                    active_processes_remaining--;
-                }
-                else
-                {
-                    int removed_from_ready = remove_process_from_queue_by_pid(ready_queue, kill_pid);
-
-                    if (removed_from_ready)
-                    {
-                        target_pcb->state = PROCESS_STATE_KILLED;
-                        target_pcb->completion_time = system_tick;
-                        target_pcb->turnaround_time = -1;
-                        target_pcb->waiting_time = -1;
-                        enqueue_process(terminated_queue, target_pcb);
-                        hashmap_remove(pcbs_map, kill_pid);
-                        active_processes_remaining--;
-                    }
-                    else
-                    {
-                        int removed_from_waiting = remove_process_from_queue_by_pid(waiting_queue, kill_pid);
-
-                        if (removed_from_waiting)
-                        {
-                            target_pcb->state = PROCESS_STATE_KILLED;
-                            target_pcb->completion_time = system_tick;
-                            target_pcb->turnaround_time = -1;
-                            target_pcb->waiting_time = -1;
-                            enqueue_process(terminated_queue, target_pcb);
-                            hashmap_remove(pcbs_map, kill_pid);
-                            active_processes_remaining--;
-                        }
-                        else
-                        {
-                            if (target_pcb->state == PROCESS_STATE_TERMINATED || target_pcb->state == PROCESS_STATE_KILLED)
-                            {
-                            }
-                            else
-                            {
-                                target_pcb->state = PROCESS_STATE_KILLED;
-                                target_pcb->completion_time = system_tick;
-                                target_pcb->turnaround_time = -1;
-                                target_pcb->waiting_time = -1;
-                                enqueue_process(terminated_queue, target_pcb);
-                                hashmap_remove(pcbs_map, kill_pid);
-                                active_processes_remaining--;
-                            }
-                        }
-                    }
-                }
-            }
-            current_kill_event = current_kill_event->next;
-        }
-
-        free_kill_event_list(events_to_apply);
+        int removed_by_kill = apply_kill_events(context, system_tick, &currently_running);
+        active_processes_remaining -= removed_by_kill;
 
         if (currently_running != NULL && currently_running->state == PROCESS_STATE_KILLED)
         {
             currently_running = NULL;
         }
 
-        if (currently_running == NULL)
-        {
-            currently_running = dequeue_non_killed(ready_queue);
+        pick_next_process(context, &currently_running);
 
-            if (currently_running != NULL)
-            {
-                currently_running->state = PROCESS_STATE_RUNNING;
-            }
-        }
+        int terminated_count = execute_cpu_cycle(context, &currently_running, system_tick);
+        active_processes_remaining -= terminated_count;
 
-        if (currently_running != NULL)
-        {
-            currently_running->cpu_executed += 1;
+        process_waiting_queue(context, system_tick);
+        move_io_completed_to_ready(context->waiting_queue, context->ready_queue, system_tick);
 
-            if (!currently_running->has_started_io && currently_running->io_start_time >= 0 && currently_running->cpu_executed == currently_running->io_start_time)
-            {
-                currently_running->has_started_io = 1;
-                currently_running->io_remaining = currently_running->io_duration;
-                currently_running->io_completed_at_tick = -1;
-                currently_running->state = PROCESS_STATE_WAITING;
-                enqueue_process(waiting_queue, currently_running);
-                currently_running = NULL;
-            }
-            else if (currently_running != NULL && currently_running->cpu_executed >= currently_running->total_cpu_burst)
-            {
-                currently_running->state = PROCESS_STATE_TERMINATED;
-                currently_running->completion_time = system_tick + 1;
-                currently_running->turnaround_time = currently_running->completion_time;
-                currently_running->waiting_time = currently_running->turnaround_time - currently_running->total_cpu_burst;
-                enqueue_process(terminated_queue, currently_running);
-                hashmap_remove(pcbs_map, currently_running->pid);
-                active_processes_remaining--;
-                currently_running = NULL;
-            }
-        }
-
-        QueueNode *waiting_cursor = waiting_queue->front;
-
-        while (waiting_cursor != NULL)
-        {
-            ProcessControlBlock *waiting_pcb = waiting_cursor->pcb;
-
-            if (waiting_pcb->state == PROCESS_STATE_KILLED)
-            {
-                waiting_cursor = waiting_cursor->next;
-                continue;
-            }
-
-            if (waiting_pcb->io_remaining > 0)
-            {
-                waiting_pcb->io_remaining -= 1;
-
-                if (waiting_pcb->io_remaining == 0)
-                {
-                    waiting_pcb->io_completed_at_tick = system_tick;
-                }
-            }
-            waiting_cursor = waiting_cursor->next;
-        }
-
-        move_io_completed_to_ready(waiting_queue, ready_queue, system_tick);
-
-        if (active_processes_remaining <= 0 && currently_running == NULL && is_queue_empty(ready_queue) && is_queue_empty(waiting_queue))
+        if (should_stop_simulation(context, currently_running, active_processes_remaining))
         {
             break;
         }
-        
+
         system_tick++;
     }
 }
@@ -653,29 +716,29 @@ static void print_summary_table(const LinkedQueue *terminated_queue)
     int process_count = 0;
     QueueNode *iterator = terminated_queue->front;
 
-    while (iterator != NULL)
-    {
+    while (iterator != NULL) 
+    { 
         process_count++;
-        iterator = iterator->next;
+        iterator = iterator->next; 
     }
 
-    ProcessControlBlock **sorted_list = (ProcessControlBlock **)safe_malloc(sizeof(ProcessControlBlock *) * process_count);
+    ProcessControlBlock **sorted_list = (ProcessControlBlock **)safe_malloc(sizeof(ProcessControlBlock *) * (process_count > 0 ? process_count : 1));
 
-    if (sorted_list == NULL)
-    {
-        printf("Error: could not allocate summary list.\n");
-        return;
+    if (sorted_list == NULL) 
+    { 
+        printf("Error: could not allocate summary list.\n"); 
+        return; 
     }
 
     iterator = terminated_queue->front;
+
     int index_position = 0;
-
-    while (iterator != NULL)
+    
+    while (iterator != NULL) 
     {
-        sorted_list[index_position++] = iterator->pcb;
-        iterator = iterator->next;
+        sorted_list[index_position++] = iterator->pcb; 
+        iterator = iterator->next; 
     }
-
     for (int outer_index = 0; outer_index < process_count - 1; outer_index++)
     {
         for (int inner_index = outer_index + 1; inner_index < process_count; inner_index++)
@@ -716,16 +779,16 @@ static void print_summary_table(const LinkedQueue *terminated_queue)
         else
         {
             if (pcb->turnaround_time < 0)
-            {
+            { 
                 pcb->turnaround_time = 0;
-            }                
+            }
 
             pcb->waiting_time = pcb->turnaround_time - pcb->total_cpu_burst;
 
             if (pcb->waiting_time < 0)
             {
                 pcb->waiting_time = 0;
-            }                
+            }
 
             printf("| %-6d | %-16s | %-8d | %-6d | %-10d | %-8d | %-7s |\n",
                    pcb->pid,
@@ -739,7 +802,6 @@ static void print_summary_table(const LinkedQueue *terminated_queue)
     }
 
     printf("--------------------------------------------------------------------------------\n");
-
     free(sorted_list);
 }
 
@@ -750,9 +812,11 @@ int main(void)
     LinkedQueue ready_queue;
     LinkedQueue waiting_queue;
     LinkedQueue terminated_queue;
+
     initialize_queue(&ready_queue);
     initialize_queue(&waiting_queue);
     initialize_queue(&terminated_queue);
+
     KillEvent *kill_events_head = NULL;
 
     while (1)
@@ -767,11 +831,12 @@ int main(void)
         if (strlen(input_line) == 0)
         {
             break;
-        }
+        } 
 
         char copy_of_line[MAX_INPUT_LINE_LENGTH];
         strncpy(copy_of_line, input_line, sizeof(copy_of_line) - 1);
         copy_of_line[sizeof(copy_of_line) - 1] = '\0';
+
         char *token = strtok(copy_of_line, " \t");
 
         if (token == NULL)
@@ -784,25 +849,25 @@ int main(void)
             char *pid_token = strtok(NULL, " \t");
             char *time_token = strtok(NULL, " \t");
 
-            if (pid_token == NULL || time_token == NULL)
+            if (pid_token == NULL || time_token == NULL) 
             {
-                fprintf(stderr, "Error: Invalid KILL format.\n");
+                printf("Error: Invalid KILL format.\n");
                 continue;
             }
 
             int pid_value;
             int kill_tick;
 
-            if (!parse_integer_strict(pid_token, &pid_value) || !parse_integer_strict(time_token, &kill_tick))
+            if (!parse_integer_strict(pid_token, &pid_value) || !parse_integer_strict(time_token, &kill_tick)) 
             {
-                fprintf(stderr, "Error: Invalid KILL values.\n");
+                printf("Error: Invalid KILL values.\n");
                 continue;
             }
 
-            if (kill_tick < 0)
-            {
-                fprintf(stderr, "Error: Kill tick must be >= 0.\n");
-                continue;
+            if (kill_tick < 0) 
+            { 
+                printf("Error: Kill tick must be >= 0.\n"); 
+                continue; 
             }
 
             kill_events_head = insert_kill_event_sorted(kill_events_head, pid_value, kill_tick);
@@ -817,10 +882,10 @@ int main(void)
             char *io_start_token = strtok(NULL, " \t");
             char *io_duration_token = strtok(NULL, " \t");
 
-            if (!pid_token || !cpu_token || !io_start_token || !io_duration_token)
-            {
-                fprintf(stderr, "Error: Invalid process format.\n");
-                continue;
+            if (!pid_token || !cpu_token || !io_start_token || !io_duration_token) 
+            { 
+                printf("Error: Invalid process format.\n"); 
+                continue; 
             }
 
             int pid_value;
@@ -828,66 +893,66 @@ int main(void)
             int io_start;
             int io_duration;
 
-            if (!parse_integer_strict(pid_token, &pid_value))
-            {
-                fprintf(stderr, "Error: Invalid PID.\n");
-                continue;
+            if (!parse_integer_strict(pid_token, &pid_value)) 
+            { 
+                printf("Error: Invalid PID.\n"); 
+                continue; 
             }
 
-            if (!parse_integer_strict(cpu_token, &cpu_burst))
-            {
-                fprintf(stderr, "Error: Invalid CPU burst.\n");
-                continue;
+            if (!parse_integer_strict(cpu_token, &cpu_burst)) 
+            { 
+                printf("Error: Invalid CPU burst.\n"); 
+                continue; 
             }
 
             if (strcmp(io_start_token, "-") == 0)
             {
                 io_start = -1;
             }
-            else
-            {
-                if (!parse_integer_strict(io_start_token, &io_start))
-                {
-                    fprintf(stderr, "Error: Invalid IO start.\n");
-                    continue;
-                }
+            else 
+            { 
+                if (!parse_integer_strict(io_start_token, &io_start)) 
+                { 
+                    printf("Error: Invalid IO start.\n"); 
+                    continue; 
+                } 
             }
 
             if (strcmp(io_duration_token, "-") == 0)
             {
                 io_duration = 0;
             }
-            else
-            {
-                if (!parse_integer_strict(io_duration_token, &io_duration))
-                {
-                    fprintf(stderr, "Error: Invalid IO duration.\n");
-                    continue;
-                }
+            else 
+            { 
+                if (!parse_integer_strict(io_duration_token, &io_duration)) 
+                { 
+                    printf("Error: Invalid IO duration.\n"); 
+                    continue; 
+                } 
             }
 
-            if (cpu_burst <= 0)
-            {
-                fprintf(stderr, "Error: CPU burst must be > 0.\n");
-                continue;
+            if (cpu_burst <= 0) 
+            { 
+                printf("Error: CPU burst must be > 0.\n"); 
+                continue; 
             }
 
-            if (io_start < -1)
-            {
-                fprintf(stderr, "Error: IO start invalid.\n");
-                continue;
+            if (io_start < -1) 
+            { 
+                printf("Error: IO start invalid.\n"); 
+                continue; 
             }
 
-            if (io_duration < 0)
-            {
-                fprintf(stderr, "Error: IO duration invalid.\n");
-                continue;
+            if (io_duration < 0) 
+            { 
+                printf("Error: IO duration invalid.\n"); 
+                continue; 
             }
 
-            if (hashmap_find(pcbs_map, pid_value) != NULL)
-            {
-                fprintf(stderr, "Error: Duplicate PID.\n");
-                continue;
+            if (hashmap_find(pcbs_map, pid_value) != NULL) 
+            { 
+                printf("Error: Duplicate PID.\n"); 
+                continue; 
             }
 
             ProcessControlBlock *pcb = create_process_control_block(process_name_local, pid_value, cpu_burst, io_start, io_duration);
@@ -896,8 +961,15 @@ int main(void)
         }
     }
 
-    run_fcfs_simulation(pcbs_map, &ready_queue, &waiting_queue, &terminated_queue, kill_events_head);
+    SimulationContext simulation;
+    simulation.pcbs_map = pcbs_map;
+    simulation.ready_queue = &ready_queue;
+    simulation.waiting_queue = &waiting_queue;
+    simulation.terminated_queue = &terminated_queue;
+    simulation.kill_events_head = kill_events_head;
+    run_fcfs_simulation(&simulation);
     print_summary_table(&terminated_queue);
+
     QueueNode *cursor = terminated_queue.front;
 
     while (cursor != NULL)
